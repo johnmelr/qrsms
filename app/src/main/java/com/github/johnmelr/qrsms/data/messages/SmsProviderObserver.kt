@@ -16,6 +16,6 @@ class SmsProviderObserver(
 
     override fun getContentProviderValue(): List<QrsmsMessage> {
         Log.v("SmsProviderObserver", "Getting content provider value...")
-        return smsRepository.getConversations(context.contentResolver)
+        return emptyList()
     }
 }
