@@ -14,7 +14,7 @@ import java.security.MessageDigest
 
 
 /**
- * Class responsible for sending Sms Message via the Sms Manager
+ * Class responsible for sending Sms Message via the SmsManager
  */
 class SmsSender(
     appContext: Context,
