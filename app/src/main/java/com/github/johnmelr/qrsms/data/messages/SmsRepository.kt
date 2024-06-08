@@ -244,11 +244,7 @@ class SmsRepository(
         }
     }
 
-    fun getMessageByUri(contentResolver: ContentResolver, uri: Uri?): QrsmsMessage? {
-        if (uri == null) {
-            return null
-        }
-
+    suspend fun getMessageByUri(contentResolver: ContentResolver, uri: Uri): QrsmsMessage? {
         val messageCursor: Cursor = contentResolver.query(
             uri,
             smsColumnsProjection,
@@ -272,7 +268,7 @@ class SmsRepository(
 
         val id = messageCursor.getString(columnMapping[Sms._ID]!!)
         val threadId = messageCursor.getString(columnMapping[Sms.THREAD_ID]!!)
-        val person = messageCursor.getString(columnMapping[Sms.PERSON]!!)
+        var person = messageCursor.getString(columnMapping[Sms.PERSON]!!)
         val address = messageCursor.getString(columnMapping[Sms.ADDRESS]!!)
         val body = messageCursor.getString(columnMapping[Sms.BODY]!!)
         val date = messageCursor.getLong(columnMapping[Sms.DATE]!!)
@@ -285,6 +281,14 @@ class SmsRepository(
         val messageType = messageCursor.getInt(columnMapping[Sms.TYPE]!!)
 
         messageCursor.close()
+
+        withContext(dispatcherIO) {
+            val contact: ContactDetails? = ContactsRepository.getContactDetailsOfAddress(
+                contentResolver, address
+            )
+
+            if (contact != null) person = contact.displayName
+        }
 
         return QrsmsMessage(
             id,
