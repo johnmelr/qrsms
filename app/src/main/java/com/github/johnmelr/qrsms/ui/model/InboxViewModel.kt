@@ -2,40 +2,24 @@ package com.github.johnmelr.qrsms.ui.model
 
 import android.app.Application
 import android.database.ContentObserver
-import android.database.Cursor
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.provider.Telephony
 import android.provider.Telephony.Sms
-import android.provider.Telephony.Sms.Conversations
 import android.util.Log
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.asFlow
-import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
-import com.github.johnmelr.qrsms.data.contacts.ContactDetails
-import com.github.johnmelr.qrsms.data.contacts.ContactsRepository
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
-import com.github.johnmelr.qrsms.data.messages.QrsmsProjection.conversationsColumnProjection
-import com.github.johnmelr.qrsms.data.messages.QrsmsProjection.smsColumnsProjection
-import com.github.johnmelr.qrsms.data.messages.SmsObserver
-import com.github.johnmelr.qrsms.data.messages.SmsProviderObserver
 import com.github.johnmelr.qrsms.data.messages.SmsRepository
 import com.github.johnmelr.qrsms.ui.state.QrsmsInboxUiState
 import dagger.hilt.android.internal.Contexts.getApplication
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -64,21 +48,38 @@ class InboxViewModel(
     var selectedAddress by mutableStateOf("")
         private set
 
-    var messageList: StateFlow<MutableList<QrsmsMessage>> = MutableStateFlow(mutableListOf())
-        private set
-
-    var smsLiveData: Flow<List<QrsmsMessage>> = SmsProviderObserver(
-        getApplication<Application>().applicationContext,
-        Sms.CONTENT_URI,
-        smsRepository
-    ).asFlow()
+    private val _messageList = MutableStateFlow<List<QrsmsMessage>>(emptyList())
+    val messageList = _messageList.asStateFlow()
 
     private val handler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
+    private val smsObserver = object : ContentObserver(handler) {
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
+
+            viewModelScope.launch(Dispatchers.IO) {
+                val smsRawUri = "${Sms.CONTENT_URI}/raw"
+
+                if (uri == null || uri.toString().contains(smsRawUri)) return@launch
+
+                val newMessage: QrsmsMessage = getMessageByUri(uri) ?: return@launch
+
+                _messageList.value = listOf(newMessage) + _messageList.value.filter {
+                    it.threadId != newMessage.threadId
+                }.toList()
+            }
+//             getInboxFromSmsProvider()
+        }
+    }
 
     init {
         viewModelScope.launch {
             getInboxFromSmsProvider()
         }
+        contentResolver.registerContentObserver(Sms.CONTENT_URI, true, smsObserver)
+    }
+
+    private suspend fun getMessageByUri(uri: Uri): QrsmsMessage? {
+        return smsRepository.getMessageByUri(contentResolver, uri)
     }
     /**
      * Function: getInboxFromSmsProvider
@@ -107,11 +108,7 @@ class InboxViewModel(
                 inboxList,
             )
 
-            _qrsmsInboxUiState.update { currentState ->
-                currentState.copy(
-                    messageList = inboxList
-                )
-            }
+            _messageList.value = inboxList
         }
     }
 
