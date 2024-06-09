@@ -7,6 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -91,6 +92,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.fragment:fragment-ktx:1.7.0")
     implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1")
+    implementation("net.zetetic:sqlcipher-android:4.6.0@aar")
 
     // Zxing QR Code Generator
     implementation ("com.google.zxing:core:3.5.3")
@@ -113,9 +115,11 @@ dependencies {
 
     // Room Database
     implementation("androidx.room:room-runtime:${rootProject.extra["room_version"]}")
-    implementation("androidx.room:room-ktx:${rootProject.extra["room_version"]}")
     annotationProcessor("androidx.room:room-compiler:${rootProject.extra["room_version"]}")
-    kapt("androidx.room:room-compiler:${rootProject.extra["room_version"]}")
+    implementation("androidx.room:room-ktx:${rootProject.extra["room_version"]}")
+    ksp("androidx.room:room-compiler:${rootProject.extra["room_version"]}")
+    // SQLCipher
+    implementation("androidx.sqlite:sqlite:2.2.0")
 
     // Hilt Dependency Injection Library
     implementation("com.google.dagger:hilt-android:2.44")

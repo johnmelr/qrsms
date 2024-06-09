@@ -19,6 +19,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.launch
+import java.security.KeyStore
 
 /**
  * View Model Class for the GenerateQrScreen.
@@ -32,9 +33,11 @@ class GenerateQrViewModel(selectedContact: ContactDetails): ViewModel() {
     var hasExistingKey: Boolean by mutableStateOf(false)
 
     var qrCode: ImageBitmap? by mutableStateOf(null)
+    private val ks: KeyStore = KeyStore.getInstance("AndroidKeyStore")
+        .apply { load(null) }
 
     init {
-        val pbk = KeyStoreManager.getPublicKeyForNumber(selectedContact.normalizedPhoneNumber)
+        val pbk = KeyStoreManager(ks).getPublicKeyForNumber(selectedContact.normalizedPhoneNumber)
 
         if (pbk == null) {
             generateForContact(selectedContact)
@@ -55,9 +58,9 @@ class GenerateQrViewModel(selectedContact: ContactDetails): ViewModel() {
      */
     fun generateForContact(selectedContact: ContactDetails) {
         viewModelScope.launch {
-            EcKeyGen.generateEcKeyPairInKeyStore(selectedContact.normalizedPhoneNumber ?: "")
+            EcKeyGen().generateKeyPair(selectedContact.normalizedPhoneNumber ?: "")
 
-            val publicKey = KeyStoreManager
+            val publicKey = KeyStoreManager(ks)
                 .getPublicKeyForNumber(selectedContact.normalizedPhoneNumber ?: "")
 
             if (publicKey != null) {

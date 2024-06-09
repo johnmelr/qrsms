@@ -5,22 +5,52 @@ import android.os.Build.VERSION
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.telephony.PhoneNumberUtils
-import java.security.Key
+import com.github.johnmelr.qrsms.data.room.KeyPairDatabase
+import com.github.johnmelr.qrsms.data.room.KeyPairEntry
+import com.github.johnmelr.qrsms.data.room.KeysDao
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.KeyStore
-import java.security.interfaces.ECPrivateKey
-import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
-import java.util.Base64
-import android.util.Base64 as ABase64
 
 const val SECP256R1 = "secp256r1"
 
-object EcKeyGen {
+/**
+ * Class responsible for KeyPair generation that will be used for key exchange.
+ * Encapsulates the logic for generating the KeyPair in either the AndroidKeyStore
+ * system for Android API level 33 and above or in the encrypted room database otherwise.
+ *
+ * @property
+ */
+class EcKeyGen() {
+    private lateinit var dao: KeysDao
+
+    constructor(db: KeyPairDatabase) : this() {
+        dao = db.KeysDao()
+    }
+
     private val secpParameterSpec = ECGenParameterSpec(SECP256R1)
 
-    fun generateEcKeyPair(): KeyPair {
+    fun generateKeyPair(keyFor: String): KeyPair {
+        val normalizedPhoneNumber = PhoneNumberUtils.formatNumberToE164(keyFor, "PH")
+        if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return generateEcKeyPairInKeyStore(normalizedPhoneNumber)
+        } else {
+            // Key Pair generation.
+            val keyPair: KeyPair = generateEcKeyPair()
+
+            val entry = KeyPairEntry(
+                normalizedPhoneNumber,
+                keyPair.private.encoded,
+                keyPair.public.encoded,
+            )
+
+            dao.insertKeyPair(entry)
+
+            return keyPair
+        }
+    }
+
+    private fun generateEcKeyPair(): KeyPair {
         val keyGen: KeyPairGenerator = KeyPairGenerator
             .getInstance(KeyProperties.KEY_ALGORITHM_EC)
 
@@ -29,8 +59,8 @@ object EcKeyGen {
         return keyGen.generateKeyPair()
     }
 
-    fun generateEcKeyPairInKeyStore(keyFor: String): KeyPair {
-        val alias = "eckey_" + PhoneNumberUtils.formatNumberToE164(keyFor, "PH")
+    private fun generateEcKeyPairInKeyStore(normalizedPhoneNumber: String): KeyPair {
+        val alias = "eckey_$normalizedPhoneNumber"
 
         val keyPairGen = KeyPairGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_EC,
