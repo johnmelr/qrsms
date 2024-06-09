@@ -2,7 +2,10 @@ package com.github.johnmelr.qrsms.ui.model
 
 import android.app.Application
 import android.content.ContentResolver
+import android.database.ContentObserver
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.Telephony
 import android.telephony.PhoneNumberUtils
 import android.util.Log
@@ -39,7 +42,6 @@ enum class MessageType {
 class ConversationsViewModel(
     application: Application = Application()
 ) : AndroidViewModel(application) {
-
     // Ui state holders
     private var _conversationsUiState = MutableStateFlow(ConversationsUiState())
     val conversationsUiState: StateFlow<ConversationsUiState> = _conversationsUiState
@@ -47,25 +49,31 @@ class ConversationsViewModel(
     // Get an instance of the content resolver
     private val contentResolver: ContentResolver = getApplication<Application>().contentResolver
 
-    private val uri: Uri = Uri.Builder()
-        .path(Telephony.Sms.CONTENT_URI.toString())
-        .appendQueryParameter(Telephony.Sms.THREAD_ID, "169")
-        .build()
+    private val handler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
+    private val conversationObserver: ContentObserver = object : ContentObserver(handler) {
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
 
-    private val observer: MutableLiveData<List<QrsmsMessage>> = SmsProviderObserver(
-        getApplication<Application>().applicationContext,
-        Telephony.Sms.CONTENT_URI,
-        SmsRepository()
-    )
+            val smsRawUri = "${Telephony.Sms.CONTENT_URI}/raw"
 
-    fun getObserver(): MutableLiveData<List<QrsmsMessage>> {
-        return observer
+            if (uri == null || uri.toString().contains(smsRawUri)) return
+
+            val address = _conversationsUiState.value.selectedContactByAddress
+            val threadId = _conversationsUiState.value.selectedInboxByThreadId
+
+            if (threadId.isBlank())
+               getInboxOfAddress(address)
+            else
+               getInboxOfThreadId(threadId)
+        }
     }
+
+    private val _messageList = MutableStateFlow<List<QrsmsMessage>>(emptyList())
+    val messageList = _messageList.asStateFlow()
 
     private val smsSender: SmsSender = SmsSender(
         getApplication<Application>().applicationContext,
     )
-
     var messageInput: String by mutableStateOf("")
         private set
 
@@ -76,6 +84,18 @@ class ConversationsViewModel(
     // UI Level State Holder
     var messageType: MessageType by mutableStateOf(MessageType.REGULAR_SMS)
         private set
+
+    init {
+        contentResolver.registerContentObserver(
+            Telephony.Sms.CONTENT_URI,
+            true,
+            conversationObserver)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        contentResolver.unregisterContentObserver(conversationObserver)
+    }
 
     /**
      * Update message string from the Text Input
@@ -95,6 +115,18 @@ class ConversationsViewModel(
 
     fun updateMessageType(newType: MessageType) {
         messageType = newType
+    }
+
+    fun setThreadId(threadId: String) {
+        _conversationsUiState.update {
+            it.copy(selectedInboxByThreadId = threadId)
+        }
+    }
+
+    fun setAddress(address: String) {
+        _conversationsUiState.update {
+            it.copy(selectedContactByAddress = address)
+        }
     }
 
     /**
@@ -117,11 +149,7 @@ class ConversationsViewModel(
                 selectedThreadId
             )
 
-            _conversationsUiState.update { currentState ->
-                currentState.copy(
-                    smsMessages = smsMessages
-                )
-            }
+            _messageList.value = smsMessages.toList()
         }
     }
 
@@ -141,11 +169,7 @@ class ConversationsViewModel(
                 address
             )
 
-            _conversationsUiState.update { currentState ->
-                currentState.copy(
-                    smsMessages = smsMessage
-                )
-            }
+            _messageList.value = smsMessage.toList()
         }
     }
 
@@ -226,8 +250,8 @@ class ConversationsViewModel(
             currentState.copy(
                 selectedInboxByThreadId = "",
                 selectedContactByAddress = "",
-                smsMessages = mutableListOf<QrsmsMessage>()
             )
         }
+        _messageList.value = emptyList()
     }
 }

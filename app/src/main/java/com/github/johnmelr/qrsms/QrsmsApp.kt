@@ -1,6 +1,5 @@
 package com.github.johnmelr.qrsms
 
-import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -83,9 +82,6 @@ fun QrsmsApp(
 
         val inboxViewModel: InboxViewModel = viewModel()
 
-        val messageList: List<QrsmsMessage> = inboxViewModel.messageList.collectAsStateWithLifecycle().value
-        Log.v("QrsmsApp", messageList.toString())
-
         NavHost(
             navController = navController,
             startDestination = QrsmsAppScreens.Inbox.name,
@@ -94,8 +90,10 @@ fun QrsmsApp(
         ) {
             composable(route = QrsmsAppScreens.Inbox.name) {
                 val inboxUiState by inboxViewModel.qrsmsInboxUiState.collectAsStateWithLifecycle()
+                val messageList: List<QrsmsMessage> = inboxViewModel.messageList.collectAsStateWithLifecycle().value
+
                 InboxScreen(
-                    messageList = inboxUiState.messageList,
+                    messageList = messageList,
                     onNavigateToConversations = {
                         navController.navigate(it)
                     },
