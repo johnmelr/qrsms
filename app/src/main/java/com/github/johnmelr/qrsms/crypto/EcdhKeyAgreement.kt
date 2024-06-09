@@ -26,32 +26,29 @@ class EcdhKeyAgreement(
     private val phoneNumber: String,
     private val myPhoneNumber: String,
     private val publicKeyString: String,
+    private val keyManager: KeyManager,
 ) {
     private val keyAgreement: KeyAgreement = KeyAgreement.getInstance(KEY_ALGORITHM_ECDH)
     private val keyFactory: KeyFactory = KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_EC)   // Used to reconstruct keys
 
     fun performExchange() {
-        try {
-            val otherPublicKeyAsByteArray: ByteArray = Base64Utils.base64ToByteArray(publicKeyString)
+        val otherPublicKeyAsByteArray: ByteArray = Base64Utils.base64ToByteArray(publicKeyString)
 
-            val sharedSecret = generateSharedSecret(
-                otherPublicKeyAsByteArray
-            )
+        val sharedSecret = generateSharedSecret(
+            otherPublicKeyAsByteArray
+        )
 
-            val myPublicKey = KeyStoreManager.getPublicKeyForNumber(phoneNumber) ?: throw InvalidKeyException("No key exist for $phoneNumber")
+        val myPublicKey = keyManager.getPublicKeyForNumber(phoneNumber) ?: throw InvalidKeyException("No key exist for $phoneNumber")
 
-            val secretKey:ByteArray = deriveSecretKey(
-                sharedSecret,
-                myPublicKey,
-                otherPublicKeyAsByteArray,
-                myPhoneNumber,
-                phoneNumber
-            )
+        val secretKey:ByteArray = deriveSecretKey(
+            sharedSecret,
+            myPublicKey,
+            otherPublicKeyAsByteArray,
+            myPhoneNumber,
+            phoneNumber
+        )
 
-            KeyStoreManager.saveSecretKey(phoneNumber, secretKey)
-        } catch (exception: Exception) {
-            throw exception
-        }
+        keyManager.saveSecretKey(phoneNumber, secretKey)
     }
 
     /**
@@ -63,7 +60,7 @@ class EcdhKeyAgreement(
         val x509encode = X509EncodedKeySpec(otherPublicKey)
         val publicKey: ECPublicKey = keyFactory.generatePublic(x509encode) as ECPublicKey
 
-        val myPrivateKey = KeyStoreManager.getPrivateKeyForNumber(phoneNumber)
+        val myPrivateKey = keyManager.getPrivateKeyForNumber(phoneNumber)
             ?: throw InvalidKeyException("Empty Private Key")
 
         keyAgreement.init(myPrivateKey)

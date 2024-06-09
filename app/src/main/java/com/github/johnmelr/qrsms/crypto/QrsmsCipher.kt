@@ -25,7 +25,7 @@ class QrsmsCipher(private val phoneNumber: String) {
      * @return the ciphertext in ByteArray
      */
     fun encrypt(message: String): String {
-        val secretKey: SecretKey = KeyStoreManager.getSecretKey(phoneNumber)
+        val secretKey: SecretKey = KeyStoreManager(ks).getSecretKey(phoneNumber)
             ?: throw NullPointerException()
 
         cipher.init(Cipher.ENCRYPT_MODE, secretKey)
@@ -42,7 +42,7 @@ class QrsmsCipher(private val phoneNumber: String) {
      * @return the message in plain text
      */
     fun decrypt(cipherBase64: String): String {
-        val secretKey: SecretKey = KeyStoreManager.getSecretKey(phoneNumber)
+        val secretKey: SecretKey = KeyStoreManager(ks).getSecretKey(phoneNumber)
             ?: throw NullPointerException()
 
         val ivByte = Base64Utils.base64ToByteArray(cipherBase64.substring(0, 24))

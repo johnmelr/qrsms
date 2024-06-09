@@ -88,6 +88,12 @@ class QrsmsAppViewModel(
         }
     }
 
+    fun updateIsFirstLaunched() {
+        _qrsmsAppUiState.update {
+            it.copy(isFirstLaunched = false)
+        }
+    }
+
     fun updatePermission(permissionString: String, isGranted: Boolean) {
         when (permissionString) {
             Manifest.permission.READ_SMS -> {
@@ -116,10 +122,10 @@ class QrsmsAppViewModel(
 }
 
 data class QrsmsAppUiState(
+    val isFirstLaunched: Boolean = true,
     val hasSmsReadPermission: Boolean = false,
     val hasSmsSendPermission: Boolean = false,
     val hasContactReadPermission: Boolean = false
-
 )
 
 /**

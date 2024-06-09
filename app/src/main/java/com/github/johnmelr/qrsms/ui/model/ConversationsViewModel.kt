@@ -203,7 +203,7 @@ class ConversationsViewModel(
                 return@launch
             }
 
-            val keyExist = KeyStoreManager.doesSecretKeyExist(phoneNumber)
+            val keyExist = KeyStoreManager().doesSecretKeyExist(phoneNumber)
 
             _conversationsUiState.update { currentState ->
                 currentState.copy(
