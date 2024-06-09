@@ -11,5 +11,4 @@ data class ConversationsUiState(
     val hasExistingKey: Boolean = false,
 
     val contact: ContactDetails? = null,
-    val smsMessages: MutableList<QrsmsMessage> = mutableListOf<QrsmsMessage>(),
 )
