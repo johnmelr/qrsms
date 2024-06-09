@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import com.github.johnmelr.qrsms.crypto.EcdhKeyAgreement
+import com.github.johnmelr.qrsms.crypto.KeyManager
 import com.github.johnmelr.qrsms.crypto.KeyStoreManager
 import com.google.firebase.components.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,10 @@ import javax.crypto.SecretKey
 
 private const val TAG = "QrCodeViewModel"
 
-class QrCodeViewModel(application: Application = Application()): AndroidViewModel(application) {
+class QrCodeViewModel(
+    application: Application = Application(),
+    private val keyManager: KeyManager
+): AndroidViewModel(application) {
     private val buildHash = if (BuildConfig.DEBUG) "hL6eyXZVMrW" else "8K21tZymYYh"
     private val appContext = getApplication<Application>().applicationContext
 
@@ -51,7 +55,11 @@ class QrCodeViewModel(application: Application = Application()): AndroidViewMode
         val publicKeyString: String = valueSplit[2]
 
         if (hashString == buildHash) {
-            val ecdhKeyAgreement = EcdhKeyAgreement(phoneNumber, myPhoneNumber, publicKeyString)
+            val ecdhKeyAgreement = EcdhKeyAgreement(
+                phoneNumber,
+                myPhoneNumber,
+                publicKeyString,
+                keyManager)
 
             try {
                 ecdhKeyAgreement.performExchange()
