@@ -11,6 +11,7 @@ import com.github.johnmelr.qrsms.data.room.KeysDao
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.spec.ECGenParameterSpec
+import javax.inject.Inject
 
 const val SECP256R1 = "secp256r1"
 
@@ -21,16 +22,12 @@ const val SECP256R1 = "secp256r1"
  *
  * @property
  */
-class EcKeyGen() {
-    private lateinit var dao: KeysDao
-
-    constructor(db: KeyPairDatabase) : this() {
-        dao = db.KeysDao()
-    }
-
+class EcKeyGen (
+    private val keysRepository: KeysRepository
+) {
     private val secpParameterSpec = ECGenParameterSpec(SECP256R1)
 
-    fun generateKeyPair(keyFor: String): KeyPair {
+    suspend fun generateKeyPair(keyFor: String): KeyPair {
         val normalizedPhoneNumber = PhoneNumberUtils.formatNumberToE164(keyFor, "PH")
         if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return generateEcKeyPairInKeyStore(normalizedPhoneNumber)
@@ -44,7 +41,7 @@ class EcKeyGen() {
                 keyPair.public.encoded,
             )
 
-            dao.insertKeyPair(entry)
+            keysRepository.insertKeyPair(entry)
 
             return keyPair
         }

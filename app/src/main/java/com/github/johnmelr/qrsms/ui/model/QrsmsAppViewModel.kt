@@ -2,27 +2,22 @@ package com.github.johnmelr.qrsms.ui.model
 
 import android.Manifest
 import android.app.Application
+import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.asLiveData
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.github.johnmelr.qrsms.data.contacts.ContactDetails
 import com.github.johnmelr.qrsms.data.preferencesDataStore.PreferencesRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 private const val TAG="QrsmsAppViewModel"
 
@@ -35,12 +30,11 @@ private const val TAG="QrsmsAppViewModel"
  * @property preferenceRepository
  * @constructor Creates a new instance of the view model
  */
-class QrsmsAppViewModel(
-    application: Application,
+@HiltViewModel
+class QrsmsAppViewModel @Inject constructor(
+    @ApplicationContext private val application: Context,
     private val preferenceRepository: PreferencesRepository
-): AndroidViewModel(application) {
-    private val appContext = getApplication<Application>().applicationContext
-
+): ViewModel() {
     private val _qrsmsAppUiState = MutableStateFlow(QrsmsAppUiState())
     var qrsmsAppUiState: StateFlow<QrsmsAppUiState> = _qrsmsAppUiState.asStateFlow()
 
@@ -51,7 +45,6 @@ class QrsmsAppViewModel(
     }
 
     fun setDefaultPhoneNumber(phoneNumber: String) {
-        Log.v(TAG, "Updating phone number: $phoneNumber")
         viewModelScope.launch {
             preferenceRepository.setDefaultPhoneNumber(phoneNumber)
         }
@@ -65,17 +58,17 @@ class QrsmsAppViewModel(
 
     private fun getTelephonyPermissions() {
         val smsReadPermission = ContextCompat.checkSelfPermission(
-            appContext,
+            application,
             Manifest.permission.READ_SMS
         ) == PackageManager.PERMISSION_GRANTED
 
         val smsSendPermission = ContextCompat.checkSelfPermission(
-            appContext,
+            application,
             Manifest.permission.SEND_SMS
         ) == PackageManager.PERMISSION_GRANTED
 
         val contactReadPermission = ContextCompat.checkSelfPermission(
-            appContext,
+            application,
             Manifest.permission.READ_CONTACTS
         ) == PackageManager.PERMISSION_GRANTED
 

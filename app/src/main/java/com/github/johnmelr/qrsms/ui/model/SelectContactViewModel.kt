@@ -2,21 +2,34 @@ package com.github.johnmelr.qrsms.ui.model
 
 import android.app.Application
 import android.content.ContentResolver
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.johnmelr.qrsms.data.contacts.ContactDetails
 import com.github.johnmelr.qrsms.data.contacts.ContactsRepository
 import com.github.johnmelr.qrsms.ui.state.SelectContactState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SelectContactViewModel(application: Application): AndroidViewModel(application) {
-    private val contentResolver:ContentResolver = getApplication<Application>().contentResolver
-
+@HiltViewModel
+class SelectContactViewModel @Inject constructor(
+    @ApplicationContext application: Context,
+    private val contactsRepository: ContactsRepository,
+): ViewModel() {
     private val _selectContactState = MutableStateFlow(SelectContactState())
     val selectContactState = _selectContactState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            getContactListFromRepository()
+        }
+    }
 
     /**
      * Retrieves a list of all contacts in the device via the Contact Provider.
@@ -25,9 +38,8 @@ class SelectContactViewModel(application: Application): AndroidViewModel(applica
         val contactList = mutableListOf<ContactDetails>()
 
         viewModelScope.launch {
-            ContactsRepository.getAllContacts(
+            contactsRepository.getAllContacts(
                 contactList,
-                contentResolver
             )
 
             _selectContactState.update { currentState ->

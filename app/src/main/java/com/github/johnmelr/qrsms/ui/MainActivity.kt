@@ -1,4 +1,4 @@
-package com.github.johnmelr.qrsms
+package com.github.johnmelr.qrsms.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -30,10 +30,16 @@ import com.github.johnmelr.qrsms.data.room.KeyPairDatabaseFactory
 import com.github.johnmelr.qrsms.ui.model.QrsmsAppViewModel
 import com.github.johnmelr.qrsms.ui.model.QrsmsAppViewModelFactory
 import com.github.johnmelr.qrsms.ui.theme.QRSMSTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import net.zetetic.database.sqlcipher.SQLiteConnection
+import net.zetetic.database.sqlcipher.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SQLiteDatabaseHook
+import java.net.PasswordAuthentication
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.crypto.SecretKey
+import javax.inject.Inject
 
 const val TAG: String = "Main Activity"
 
@@ -41,14 +47,12 @@ const val USER_PREFERENCE_KEY = "user_preference"
 
 val Context.dataStore by preferencesDataStore(name = USER_PREFERENCE_KEY)
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private lateinit var cameraExecutor: ExecutorService
-    private lateinit var preferencesRepository: PreferencesRepository
-    private lateinit var keyPairDatabase: KeyPairDatabase
+    @Inject lateinit var preferencesRepository: PreferencesRepository
 
-    private val qrsmsAppViewModel by viewModels<QrsmsAppViewModel> {
-        QrsmsAppViewModelFactory(this.application, preferencesRepository)
-    }
+    private val qrsmsAppViewModel by viewModels<QrsmsAppViewModel>()
 
     private val permissions = arrayOf(
         Manifest.permission.READ_SMS,
@@ -67,66 +71,11 @@ class MainActivity : ComponentActivity() {
         if (!this.packageManager.hasSystemFeature( "android.hardware.telephony" ))
             finishAndRemoveTask()
 
+        // initializeSQLCipher()
+        System.loadLibrary("sqlcipher")
+
         cameraExecutor = Executors.newSingleThreadExecutor()
         preferencesRepository = PreferencesRepository(this.dataStore)
-
-        preferencesRepository.isFirstLaunch.asLiveData(Dispatchers.Main)
-            .observe(this@MainActivity) { isFirstLaunch ->
-                if (isFirstLaunch == null) return@observe
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return@observe
-
-                if (isFirstLaunch) {
-                    // Generate secrets
-                    val passphrase = DatabasePassphrase.generateRandomPassphrase(32)
-                    val secretKey = DatabasePassphrase.generateSecretKey()
-
-                    val factory = KeyPairDatabaseFactory(passphrase)
-
-                    keyPairDatabase = Room.databaseBuilder(
-                        applicationContext,
-                        KeyPairDatabase::class.java,
-                        KeyPairDatabase.DATABASE_NAME
-                    ).openHelperFactory(factory).build()
-
-                    val databasePassphrase: ByteArray = DatabasePassphrase
-                        .encryptPassphrase(passphrase, secretKey)
-
-                    // Set first launch to false
-                    suspend {
-                        preferencesRepository.completeFirstLaunch()
-                        preferencesRepository.updatePassphrase(databasePassphrase)
-
-                    }
-                } else {
-                    // get passphrase
-                    preferencesRepository.databasePassphrase.asLiveData(Dispatchers.Main)
-                        .observe(this@MainActivity) { encryptedPassphrase ->
-                           val secretKey: SecretKey = DatabasePassphrase.getSecretKey()
-                           val passphrase: ByteArray = DatabasePassphrase.getDecryptedPassphrase(
-                               encryptedPassphrase, secretKey
-                           )
-
-                           val factory = KeyPairDatabaseFactory(passphrase)
-
-                           keyPairDatabase = Room.databaseBuilder(
-                               applicationContext,
-                               KeyPairDatabase::class.java,
-                               KeyPairDatabase.DATABASE_NAME
-                           ).openHelperFactory(factory).build()
-
-                            // Re-encrypt key before storing it back to the preference.
-                            // This will encrypt the key again with a different IV value
-                            // resulting in a different ciphertext each time it is stored in the
-                            // datastore preferences.
-                            val databasePassphrase: ByteArray = DatabasePassphrase
-                                .encryptPassphrase(passphrase, secretKey)
-
-                            suspend {
-                                preferencesRepository.updatePassphrase(databasePassphrase)
-                            }
-                        }
-                }
-            }
 
         // Request runtime permission
         val requestPermissionLauncher = registerForActivityResult(

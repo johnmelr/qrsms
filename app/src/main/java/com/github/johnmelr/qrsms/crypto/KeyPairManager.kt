@@ -16,7 +16,7 @@ import java.security.PublicKey
  * minimum api level this app requires (API 24).
  */
 interface KeyPairManager {
-    fun getPublicKeyForNumber(phoneNumber: String): PublicKey?
-    fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey?
-    fun doesKeyPairExist(phoneNumber: String): Boolean
+    suspend fun getPublicKeyForNumber(phoneNumber: String): PublicKey?
+    suspend fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey?
+    suspend fun doesKeyPairExist(phoneNumber: String): Boolean
 }

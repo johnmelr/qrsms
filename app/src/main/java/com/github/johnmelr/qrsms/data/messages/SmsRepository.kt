@@ -15,14 +15,16 @@ import com.github.johnmelr.qrsms.data.utils.Flags
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 private const val TAG = "SmsRepository"
 
 class SmsRepository(
-    private val dispatcherIO: CoroutineDispatcher = Dispatchers.IO
+    private val dispatcherIO: CoroutineDispatcher,
+    private val contentResolver: ContentResolver,
+    private val contactsRepository: ContactsRepository
 ) {
     suspend fun getInboxOfThreadId(
-        contentResolver: ContentResolver,
         smsMessages: MutableList<QrsmsMessage>,
         threadIdOfConversation: String
     ) {
@@ -97,7 +99,6 @@ class SmsRepository(
     }
 
     suspend fun getInboxOfAddress(
-        contentResolver: ContentResolver,
         smsMessages: MutableList<QrsmsMessage>,
         addressOfConversation: String
     ) {
@@ -127,7 +128,6 @@ class SmsRepository(
             threadIdCursor.close()
 
             getInboxOfThreadId(
-                contentResolver,
                 smsMessages,
                 contactThreadId
             )
@@ -135,7 +135,6 @@ class SmsRepository(
     }
 
     suspend fun getConversations(
-        contentResolver: ContentResolver,
         inboxList: MutableList<QrsmsMessage>
     ) {
         Log.v("SmsRepository", "Retrieving Conversations.")
@@ -214,9 +213,8 @@ class SmsRepository(
 
                 inboxCursor.close()
 
-                val contact: ContactDetails? = ContactsRepository.getContactDetailsOfAddress(
-                    contentResolver, address
-                )
+                val contact: ContactDetails? = contactsRepository
+                    .getContactDetailsOfAddress(address)
 
                 if (contact != null) person = contact.displayName
 
@@ -244,7 +242,7 @@ class SmsRepository(
         }
     }
 
-    suspend fun getMessageByUri(contentResolver: ContentResolver, uri: Uri): QrsmsMessage? {
+    suspend fun getMessageByUri(uri: Uri): QrsmsMessage? {
         val messageCursor: Cursor = contentResolver.query(
             uri,
             smsColumnsProjection,
@@ -283,9 +281,7 @@ class SmsRepository(
         messageCursor.close()
 
         withContext(dispatcherIO) {
-            val contact: ContactDetails? = ContactsRepository.getContactDetailsOfAddress(
-                contentResolver, address
-            )
+            val contact: ContactDetails? = contactsRepository.getContactDetailsOfAddress(address)
 
             if (contact != null) person = contact.displayName
         }

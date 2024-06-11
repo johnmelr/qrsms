@@ -1,6 +1,6 @@
 package com.github.johnmelr.qrsms.ui.model
 
-import android.app.Application
+import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Handler
@@ -10,17 +10,19 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
 import com.github.johnmelr.qrsms.data.messages.SmsRepository
 import com.github.johnmelr.qrsms.ui.state.QrsmsInboxUiState
-import dagger.hilt.android.internal.Contexts.getApplication
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Class: InboxViewModel
@@ -34,11 +36,12 @@ import kotlinx.coroutines.launch
  * of the application context. Through the application class, it is possible to
  * get an instance of a contentResolver needed to query/retrieve stored SMS messages.
  **/
-class InboxViewModel(
-    application: Application = Application(),
-): AndroidViewModel(application) {
-    private val contentResolver = getApplication(application).contentResolver
-    private val smsRepository = SmsRepository()
+@HiltViewModel
+class InboxViewModel @Inject constructor(
+    @ApplicationContext application: Context,
+    private val smsRepository: SmsRepository,
+): ViewModel() {
+    private val contentResolver = application.contentResolver
 
     private var _qrsmsInboxUiState = MutableStateFlow(QrsmsInboxUiState())
     val qrsmsInboxUiState: StateFlow<QrsmsInboxUiState> = _qrsmsInboxUiState.asStateFlow()
@@ -79,7 +82,7 @@ class InboxViewModel(
     }
 
     private suspend fun getMessageByUri(uri: Uri): QrsmsMessage? {
-        return smsRepository.getMessageByUri(contentResolver, uri)
+        return smsRepository.getMessageByUri(uri)
     }
     /**
      * Function: getInboxFromSmsProvider
@@ -104,7 +107,6 @@ class InboxViewModel(
             val inboxList: MutableList<QrsmsMessage> = mutableListOf()
 
             smsRepository.getConversations(
-                contentResolver,
                 inboxList,
             )
 
