@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
         preferencesRepository.isFirstLaunch.asLiveData(Dispatchers.Main)
             .observe(this@MainActivity) { isFirstLaunch ->
+                if (isFirstLaunch == null) return@observe
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return@observe
 
                 if (isFirstLaunch) {
