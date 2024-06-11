@@ -2,6 +2,7 @@ package com.github.johnmelr.qrsms.ui.model
 
 import android.app.Application
 import android.content.ContentResolver
+import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Handler
@@ -13,24 +14,23 @@ import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.johnmelr.qrsms.crypto.KeyStoreManager
 import com.github.johnmelr.qrsms.crypto.QrsmsCipher
 import com.github.johnmelr.qrsms.data.contacts.ContactsRepository
-import com.github.johnmelr.qrsms.ui.state.ConversationsUiState
-import com.github.johnmelr.qrsms.data.messages.SmsRepository
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
-import com.github.johnmelr.qrsms.data.messages.SmsProviderObserver
+import com.github.johnmelr.qrsms.data.messages.SmsRepository
 import com.github.johnmelr.qrsms.data.messages.SmsSender
+import com.github.johnmelr.qrsms.ui.state.ConversationsUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 private const val TAG = "ConversationsViewModel"
 
@@ -39,15 +39,18 @@ enum class MessageType {
     ENCRYPTED_SMS
 }
 
-class ConversationsViewModel(
-    application: Application = Application()
-) : AndroidViewModel(application) {
+@HiltViewModel
+class ConversationsViewModel @Inject constructor(
+    @ApplicationContext private val application: Context,
+    private val smsRepository: SmsRepository,
+    private val contactsRepository: ContactsRepository
+) : ViewModel() {
     // Ui state holders
     private var _conversationsUiState = MutableStateFlow(ConversationsUiState())
     val conversationsUiState: StateFlow<ConversationsUiState> = _conversationsUiState
 
     // Get an instance of the content resolver
-    private val contentResolver: ContentResolver = getApplication<Application>().contentResolver
+    private val contentResolver: ContentResolver = application.contentResolver
 
     private val handler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
     private val conversationObserver: ContentObserver = object : ContentObserver(handler) {
@@ -71,9 +74,7 @@ class ConversationsViewModel(
     private val _messageList = MutableStateFlow<List<QrsmsMessage>>(emptyList())
     val messageList = _messageList.asStateFlow()
 
-    private val smsSender: SmsSender = SmsSender(
-        getApplication<Application>().applicationContext,
-    )
+    private val smsSender: SmsSender = SmsSender(application)
     var messageInput: String by mutableStateOf("")
         private set
 
@@ -143,8 +144,7 @@ class ConversationsViewModel(
 
         viewModelScope.launch {
             val smsMessages: MutableList<QrsmsMessage> = mutableListOf()
-            SmsRepository().getInboxOfThreadId(
-                contentResolver,
+            smsRepository.getInboxOfThreadId(
                 smsMessages,
                 selectedThreadId
             )
@@ -163,8 +163,7 @@ class ConversationsViewModel(
 
         viewModelScope.launch {
             val smsMessage: MutableList<QrsmsMessage> = mutableListOf()
-            SmsRepository().getInboxOfAddress(
-                contentResolver,
+            smsRepository.getInboxOfAddress(
                 smsMessage,
                 address
             )
@@ -180,8 +179,7 @@ class ConversationsViewModel(
      */
     fun getContactDetailsOfAddress(address: String) {
         viewModelScope.launch {
-            val contact = ContactsRepository.getContactDetailsOfAddress(
-                contentResolver,
+            val contact = contactsRepository.getContactDetailsOfAddress(
                 address
             )
 
@@ -225,7 +223,7 @@ class ConversationsViewModel(
         messageType: MessageType = MessageType.REGULAR_SMS,
     ) {
         if (text == "") {
-            Toast.makeText(getApplication(), "Message is empty!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(application, "Message is empty!", Toast.LENGTH_SHORT).show()
             return
         }
 

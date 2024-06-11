@@ -4,13 +4,9 @@ import android.content.Context
 import android.os.Build
 import android.telephony.PhoneNumberUtils
 import android.telephony.SmsManager
-import android.util.Log
 import com.github.johnmelr.qrsms.crypto.Base64Utils
 import com.github.johnmelr.qrsms.crypto.QrsmsCipher
 import com.github.johnmelr.qrsms.data.utils.Flags
-import com.github.johnmelr.qrsms.dataStore
-import java.security.MessageDigest
-
 
 
 /**

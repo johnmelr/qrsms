@@ -11,13 +11,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.github.johnmelr.qrsms.data.contacts.ContactsProjection.contactsProjection as projection
 
-object ContactsRepository {
+
+class ContactsRepository(
+    private val dispatcherIO: CoroutineDispatcher,
+    private val contentResolver: ContentResolver,
+) {
     private val contactsUri: Uri = Phone.CONTENT_URI
-    private val dispatcherIO: CoroutineDispatcher = Dispatchers.IO
 
     suspend fun getAllContacts(
         contactList: MutableList<ContactDetails>,
-        contentResolver: ContentResolver
     ) {
         withContext(dispatcherIO) {
             val contactCursor: Cursor = contentResolver.query(
@@ -52,7 +54,7 @@ object ContactsRepository {
         }
     }
 
-    suspend fun getContactDetailsOfAddress(contentResolver: ContentResolver, address: String): ContactDetails? {
+    suspend fun getContactDetailsOfAddress(address: String): ContactDetails? {
         return withContext(dispatcherIO) {
             val normalizedAddress = PhoneNumberUtils.formatNumberToE164(address, "PH")
 

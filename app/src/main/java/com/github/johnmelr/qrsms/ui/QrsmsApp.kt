@@ -1,5 +1,6 @@
-package com.github.johnmelr.qrsms
+package com.github.johnmelr.qrsms.ui
 
+import android.telephony.PhoneNumberUtils
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -16,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -25,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
+import com.github.johnmelr.qrsms.ui.model.GenerateQrViewModel
 import com.github.johnmelr.qrsms.ui.model.InboxViewModel
 import com.github.johnmelr.qrsms.ui.model.QrsmsAppViewModel
 import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
@@ -47,7 +51,7 @@ enum class QrsmsAppScreens(val title: String) {
 fun QrsmsApp(
     modifier: Modifier = Modifier,
     qrsmsAppViewModel: QrsmsAppViewModel,
-    selectContactViewModel: SelectContactViewModel = viewModel(),
+    selectContactViewModel: SelectContactViewModel = hiltViewModel(),
     navController: NavHostController = rememberNavController(),
 ){
     // The defaultPhoneNumber is needed for generating the qr code as it will be encoded in the
@@ -141,9 +145,35 @@ fun QrsmsApp(
                 val selectContactState by selectContactViewModel
                     .selectContactState.collectAsStateWithLifecycle()
 
+                if (selectContactState.selectedContact == null) {
+                    navController.popBackStack()
+                    return@composable
+                }
+
+                val selectedContact = remember { selectContactState.selectedContact!! }
+                val normalizedNumber = PhoneNumberUtils
+                    .formatNumberToE164(defaultPhoneNumber, "PH")
+
+                val generateQrViewModel: GenerateQrViewModel = hiltViewModel(
+                    creationCallback = { factory:
+                         GenerateQrViewModel.GenerateQrViewModelFactory ->
+                            factory.create(selectedContact, normalizedNumber)
+                    }
+                )
+
+                val hasExistingKey by generateQrViewModel.hasExistingKey.collectAsStateWithLifecycle()
+                val publicKeyString by generateQrViewModel.publicKeyString.collectAsStateWithLifecycle()
+
+                val imageBitmap: ImageBitmap? =  if (publicKeyString.isEmpty()) null else
+                    generateQrViewModel.generateQrCode(
+                    "$normalizedNumber:$publicKeyString"
+                )
+
                 GenerateQrScreen(
-                    selectedContact = selectContactState.selectedContact,
-                    defaultPhoneNumber = defaultPhoneNumber
+                    selectedContact = selectedContact,
+                    hasExistingKey = hasExistingKey,
+                    generateKeyPair = { generateQrViewModel.generate(selectedContact , defaultPhoneNumber)},
+                    imageBitmap = imageBitmap
                 )
             }
             composable(route = QrsmsAppScreens.ScanQR.name) {

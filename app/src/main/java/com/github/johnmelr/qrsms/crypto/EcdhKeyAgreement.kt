@@ -31,11 +31,13 @@ class EcdhKeyAgreement(
     private val keyAgreement: KeyAgreement = KeyAgreement.getInstance(KEY_ALGORITHM_ECDH)
     private val keyFactory: KeyFactory = KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_EC)   // Used to reconstruct keys
 
-    fun performExchange() {
+    suspend fun performExchange() {
         val otherPublicKeyAsByteArray: ByteArray = Base64Utils.base64ToByteArray(publicKeyString)
+        val myPrivateKey: PrivateKey = keyManager.getPrivateKeyForNumber(phoneNumber) ?: throw InvalidKeyException("No key exist for $phoneNumber")
 
         val sharedSecret = generateSharedSecret(
-            otherPublicKeyAsByteArray
+            publicKeyString,
+            myPrivateKey
         )
 
         val myPublicKey = keyManager.getPublicKeyForNumber(phoneNumber) ?: throw InvalidKeyException("No key exist for $phoneNumber")
@@ -54,7 +56,7 @@ class EcdhKeyAgreement(
     /**
      * Generates a shared secret using the ECDH key agreement protocol
      */
-    private fun generateSharedSecret(
+    private suspend fun generateSharedSecret(
         otherPublicKey: ByteArray,
     ): ByteArray {
         val x509encode = X509EncodedKeySpec(otherPublicKey)
@@ -75,7 +77,7 @@ class EcdhKeyAgreement(
      */
     fun generateSharedSecret(
         otherPublicKey: String,
-        myPrivateKey: ByteArray
+        myPrivateKey: PrivateKey
     ): ByteArray {
         // Convert public key from base64 string to byte array
         val otherPublicKeyAsByteArray: ByteArray = Base64Utils.base64ToByteArray(otherPublicKey)
@@ -83,10 +85,10 @@ class EcdhKeyAgreement(
         val x509encode = X509EncodedKeySpec(otherPublicKeyAsByteArray)
         val publicKey: ECPublicKey = keyFactory.generatePublic(x509encode) as ECPublicKey
 
-        val pkcs8encode = PKCS8EncodedKeySpec(myPrivateKey)
-        val privateKey: ECPrivateKey = keyFactory.generatePrivate(pkcs8encode) as ECPrivateKey
+//        val pkcs8encode = PKCS8EncodedKeySpec(myPrivateKey)
+//        val privateKey: ECPrivateKey = keyFactory.generatePrivate(pkcs8encode) as ECPrivateKey
 
-        keyAgreement.init(privateKey)
+        keyAgreement.init(myPrivateKey)
         keyAgreement.doPhase(publicKey, true)
 
         return keyAgreement.generateSecret()
