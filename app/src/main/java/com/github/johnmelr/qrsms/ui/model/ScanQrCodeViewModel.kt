@@ -1,18 +1,15 @@
 package com.github.johnmelr.qrsms.ui.model
 
 import android.Manifest
-import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.johnmelr.qrsms.crypto.EcdhKeyAgreement
 import com.github.johnmelr.qrsms.crypto.KeyManager
-import com.github.johnmelr.qrsms.crypto.KeyStoreManager
 import com.google.firebase.components.BuildConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,14 +19,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.security.PrivateKey
-import javax.crypto.SecretKey
 import javax.inject.Inject
 
 private const val TAG = "QrCodeViewModel"
 
 @HiltViewModel
-class QrCodeViewModel @Inject constructor(
+class ScanQrCodeViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val keyManager: KeyManager
 ): ViewModel() {

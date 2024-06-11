@@ -33,11 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.github.johnmelr.qrsms.QrsmsAppScreens
+import com.github.johnmelr.qrsms.ui.QrsmsAppScreens
 import com.github.johnmelr.qrsms.R
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
 import com.github.johnmelr.qrsms.utils.DateUtils.parseDateFromMilliToDate
-import kotlinx.coroutines.flow.collectIndexed
 
 @Composable
 fun InboxScreen(

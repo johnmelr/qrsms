@@ -24,7 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.github.johnmelr.qrsms.R
 import com.github.johnmelr.qrsms.data.contacts.ContactDetails
 import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
@@ -32,11 +32,10 @@ import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
 @Composable
 fun SelectContactScreen(
     modifier: Modifier = Modifier,
-    viewModel: SelectContactViewModel = viewModel(),
+    viewModel: SelectContactViewModel = hiltViewModel(),
     onSelectContact: (ContactDetails) -> Unit = {},
     defaultPhoneNumber: String
 ) {
-    viewModel.getContactListFromRepository()
     val listState = rememberLazyListState()
     val selectContactState by viewModel.selectContactState.collectAsState()
 

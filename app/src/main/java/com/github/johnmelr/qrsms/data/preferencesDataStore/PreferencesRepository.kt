@@ -41,11 +41,11 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
                 throw exception
             }
         }.map { preferences ->
-            val databasePassphrase = preferences[DATABASE_PASSPHRASE] ?: byteArrayOf(0.toByte())
+            val databasePassphrase = preferences[DATABASE_PASSPHRASE] ?: byteArrayOf()
             databasePassphrase
         }
 
-    val isFirstLaunch: Flow<Boolean> = dataStore.data
+    val isFirstLaunch: Flow<Boolean?> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {
                 Log.e(TAG,"Error reading preferences", exception)
@@ -54,7 +54,7 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
                 throw exception
             }
         }.map { preferences ->
-            val databasePassphrase = preferences[IS_FIRST_LAUNCH] ?: false
+            val databasePassphrase = preferences[IS_FIRST_LAUNCH]
             databasePassphrase
         }
 
