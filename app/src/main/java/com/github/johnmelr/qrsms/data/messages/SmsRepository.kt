@@ -108,7 +108,8 @@ class SmsRepository(
             val threadIdCursor: Cursor = contentResolver.query(
                 Sms.CONTENT_URI,
                 smsColumnsProjection,
-                "instr(${Sms.ADDRESS}, ${addressOfConversation.substringAfter("+63")}) > 0",
+                //"instr(${Sms.ADDRESS}, ${addressOfConversation.substringAfter("+63")}) > 0",
+                "${Sms.ADDRESS} LIKE ${addressOfConversation.substringAfter("+63")}",
                 null,
                 "${Sms.DATE} DESC LIMIT 1"
             ) ?: return@withContext
@@ -218,6 +219,14 @@ class SmsRepository(
 
                 if (contact != null) person = contact.displayName
 
+                var isEncrypted = false
+                val start = Base64Utils.stringToBase64(Flags.CIPHER_START)
+                val end = Base64Utils.stringToBase64(Flags.CIPHER_END)
+
+                if (body.startsWith(start) && body.endsWith(end)) {
+                    isEncrypted = true
+                }
+
                 val messageSnippet = QrsmsMessage(
                     id,
                     threadId,
@@ -233,7 +242,7 @@ class SmsRepository(
                     replyPathPresent,
                     messageType,
                     messageCount.toInt(),
-                    isEncrypted = false,
+                    isEncrypted,
                 )
 
                 inboxList.add(messageSnippet)

@@ -117,7 +117,6 @@ fun QrsmsApp(
                     addressOfConversation = inboxViewModel.selectedAddress,
                     modifier = modifier,
                     onConversationLoad = { contact: String -> topBarTitle.value = contact },    // Modifies the top bar title to reflect the current contact selected
-                    defaultPhoneNumber = defaultPhoneNumber,
                 )
             }
             composable(route = QrsmsAppScreens.GenerateForContact.name) {
@@ -127,7 +126,6 @@ fun QrsmsApp(
                         selectContactViewModel.setSelectedContactDetails(it)
                         navController.navigate(QrsmsAppScreens.GenerateQR.name)
                     },
-                    defaultPhoneNumber = defaultPhoneNumber
                 )
             }
             composable(route = QrsmsAppScreens.NewConversation.name) {
@@ -138,7 +136,6 @@ fun QrsmsApp(
                         inboxViewModel.setSelectedConversation("", contactDetails.normalizedPhoneNumber)
                         navController.navigate(QrsmsAppScreens.Conversation.name)
                     },
-                    defaultPhoneNumber = defaultPhoneNumber,
                 )
             }
             composable(route = QrsmsAppScreens.GenerateQR.name) {
