@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.github.johnmelr.qrsms.R
 import com.github.johnmelr.qrsms.data.contacts.ContactDetails
+import com.github.johnmelr.qrsms.ui.components.SearchBar
 import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
 
 @Composable
@@ -34,23 +35,49 @@ fun SelectContactScreen(
     modifier: Modifier = Modifier,
     viewModel: SelectContactViewModel = hiltViewModel(),
     onSelectContact: (ContactDetails) -> Unit = {},
-    defaultPhoneNumber: String
 ) {
     val listState = rememberLazyListState()
     val selectContactState by viewModel.selectContactState.collectAsState()
 
     val contactList = selectContactState.contactList
+    val searchInput: String = viewModel.searchInput.value
 
-    if (contactList.isNotEmpty()) {
+    fun String.isNumeric(): Boolean {
+        val numRegex = "[0-9]+".toRegex()
+        return this.matches(numRegex)
+    }
+
+    Column (
+        modifier = modifier.fillMaxSize()
+    ){
+        SearchBar(
+            input = searchInput,
+            onQueryChange = {
+                viewModel.updateSearchInput(it)
+            },
+            placeholder = { Text("Type names or phone number")}
+        )
+        if ((searchInput.isNotBlank() || searchInput.isNotEmpty())
+            && searchInput.isNumeric()) {
+            // Create an Empty Contact Details
+            val emptyContact = ContactDetails(
+                id = "",
+                displayName = "Send to $searchInput",
+                photoThumbUriString = null,
+                phoneNumber = null,
+                normalizedPhoneNumber = searchInput,
+            )
+            ContactCard(contact = emptyContact, onSelectContact = onSelectContact)
+        }
+
+
         LazyColumn(
             state = listState,
-            modifier = modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
             items(
                 count = contactList.size,
-                key = {
-                    contactList[it].id
-                },
+                key = { contactList[it].id },
                 itemContent = {
                     val contact = contactList[it]
 
