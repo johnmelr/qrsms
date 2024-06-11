@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.johnmelr.qrsms.R
@@ -44,8 +45,7 @@ fun ConversationScreen(
     modifier: Modifier = Modifier,
     threadIdOfConversation: String,
     addressOfConversation: String,
-    conversationsViewModel: ConversationsViewModel = viewModel(),
-    defaultPhoneNumber: String,
+    conversationsViewModel: ConversationsViewModel = hiltViewModel(),
     onConversationLoad: (String) -> Unit,
     onMessageSent: () -> Unit = {},
 ) {

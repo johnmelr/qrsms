@@ -20,7 +20,7 @@ class KeyStoreManager(
      * Retrieves Public Key associated with the given phone number. This association
      * is done when user generates a QR Code after selecting a contact.
      */
-    override fun getPublicKeyForNumber(phoneNumber: String): PublicKey? {
+    override suspend fun getPublicKeyForNumber(phoneNumber: String): PublicKey? {
         val alias = EC_KEY_PREFIX +
                 PhoneNumberUtils.formatNumberToE164(phoneNumber, "PH")
 
@@ -39,7 +39,7 @@ class KeyStoreManager(
      * is done when user generates a QR Code after selecting a contact. This private key
      * will be used to perform an ECDH key agreement.
      */
-    override fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey? {
+    override suspend fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey? {
         val alias = EC_KEY_PREFIX +
                 PhoneNumberUtils.formatNumberToE164(phoneNumber, "PH")
 
@@ -53,7 +53,7 @@ class KeyStoreManager(
         return key as PrivateKey?
     }
 
-    override fun doesKeyPairExist(phoneNumber: String): Boolean {
+    override suspend fun doesKeyPairExist(phoneNumber: String): Boolean {
         val alias = EC_KEY_PREFIX + phoneNumber
 
         return keyStore.containsAlias(alias)

@@ -16,14 +16,14 @@ class KeysRepository(
         .apply { load(null) }
 ): KeyManager(keyStore) {
 
-    override fun doesKeyPairExist(phoneNumber: String): Boolean {
+    override suspend fun doesKeyPairExist(phoneNumber: String): Boolean {
         val entry: KeyPairEntry? = keysDao.getKeyPairOfAddress(phoneNumber)
 
         // If entry is not null, has entry (true) else (false)
         return entry != null
     }
 
-    override fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey? {
+    override suspend fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey? {
         val privateKeyBytes: ByteArray? = keysDao.getPrivateKeyOfAddress(phoneNumber)
 
         val keyFactory = KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_EC)
@@ -32,12 +32,16 @@ class KeysRepository(
         return keyFactory.generatePrivate(encodedKeySpec)
     }
 
-    override fun getPublicKeyForNumber(phoneNumber: String): PublicKey? {
+    override suspend fun getPublicKeyForNumber(phoneNumber: String): PublicKey? {
         val publicKeyBytes: ByteArray? = keysDao.getPublicKeyOfAddress(phoneNumber)
 
         val keyFactory =  KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_EC)
-        val encodedKeySpec = PKCS8EncodedKeySpec(publicKeyBytes)
+        val encodedKeySpec = X509EncodedKeySpec(publicKeyBytes)
 
         return keyFactory.generatePublic(encodedKeySpec)
+    }
+
+    suspend fun insertKeyPair(entry: KeyPairEntry) {
+        keysDao.insertKeyPair(entry)
     }
 }
