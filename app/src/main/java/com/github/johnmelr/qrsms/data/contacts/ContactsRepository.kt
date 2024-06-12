@@ -3,9 +3,11 @@ package com.github.johnmelr.qrsms.data.contacts
 import android.content.ContentResolver
 import android.database.Cursor
 import android.net.Uri
+import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.telephony.PhoneNumberUtils
 import androidx.core.database.getStringOrNull
+import com.github.johnmelr.qrsms.data.contacts.ContactsProjection.contactsProjection
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -95,6 +97,46 @@ class ContactsRepository(
 
             contactCursor.close()
             return@withContext contact
+        }
+    }
+
+    suspend fun searchContact(queryString: String, listBuffer: MutableList<ContactDetails>) {
+        withContext(dispatcherIO) {
+            val searchCursor: Cursor = contentResolver.query(
+                contactsUri,
+                contactsProjection,
+                "${Phone.DISPLAY_NAME} LIKE ? OR ${Phone.NORMALIZED_NUMBER} LIKE ? OR ${Phone.NUMBER} LIKE ?",
+                arrayOf(
+                    "%$queryString%",
+                    "%$queryString%",
+                    "%$queryString%"
+                ),
+                null,
+            ) ?: return@withContext
+
+            if (searchCursor.count == 0) {
+                searchCursor.close()
+                return@withContext
+            }
+
+            while (searchCursor.moveToNext() && searchCursor.count > searchCursor.position) {
+                val idIndex: Int = searchCursor.getColumnIndex(Phone._ID)
+                val displayNameIndex: Int = searchCursor.getColumnIndex(Phone.DISPLAY_NAME)
+                val photoUriIndex: Int = searchCursor.getColumnIndex(Phone.PHOTO_THUMBNAIL_URI)
+                val phoneNumberIndex: Int = searchCursor.getColumnIndex(Phone.NUMBER)
+                val normalizedPhoneNumberIndex: Int = searchCursor.getColumnIndex(Phone.NORMALIZED_NUMBER)
+
+                val contact = ContactDetails(
+                    id = searchCursor.getString(idIndex),
+                    displayName = searchCursor.getString(displayNameIndex),
+                    photoThumbUriString = searchCursor.getString(photoUriIndex),
+                    phoneNumber = searchCursor.getString(phoneNumberIndex),
+                    normalizedPhoneNumber = searchCursor.getString(normalizedPhoneNumberIndex) ?: ""
+                )
+
+                listBuffer.add(contact)
+            }
+            searchCursor.close()
         }
     }
 }
