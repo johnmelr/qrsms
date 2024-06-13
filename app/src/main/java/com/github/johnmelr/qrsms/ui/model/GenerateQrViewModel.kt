@@ -1,24 +1,30 @@
 package com.github.johnmelr.qrsms.ui.model
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Picture
+import android.media.MediaScannerConnection
+import android.media.MediaScannerConnection.OnScanCompletedListener
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.telephony.PhoneNumberUtils
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.github.johnmelr.qrsms.crypto.EcKeyGen
-import com.github.johnmelr.qrsms.crypto.KeyStoreManager
 import com.github.johnmelr.qrsms.crypto.Base64Utils
+import com.github.johnmelr.qrsms.crypto.EcKeyGen
 import com.github.johnmelr.qrsms.crypto.KeyManager
 import com.github.johnmelr.qrsms.crypto.KeysRepository
 import com.github.johnmelr.qrsms.data.contacts.ContactDetails
-import com.google.android.datatransport.BuildConfig
+import com.github.johnmelr.qrsms.utils.ImageHandler
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -26,18 +32,15 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.security.KeyFactory
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.security.KeyPair
-import java.security.KeyStore
-import java.security.PublicKey
-import java.security.spec.X509EncodedKeySpec
-import javax.inject.Inject
 
 /**
  * View Model Class for the GenerateQrScreen.
@@ -48,6 +51,7 @@ import javax.inject.Inject
  */
 @HiltViewModel(assistedFactory = GenerateQrViewModel.GenerateQrViewModelFactory::class)
 class GenerateQrViewModel @AssistedInject constructor(
+    @ApplicationContext private val appContext: Context,
     private val keysRepository: KeysRepository,
     private val keyManager: KeyManager,
 
@@ -60,35 +64,9 @@ class GenerateQrViewModel @AssistedInject constructor(
     private val _hasExistingKey = MutableStateFlow(false)
     val hasExistingKey = _hasExistingKey.asStateFlow()
 
-//    private val _qrCode = MutableStateFlow<ImageBitmap?>(null)
-//    val qrCode = _qrCode.asStateFlow()
-    @AssistedFactory
-    interface GenerateQrViewModelFactory {
-        fun create(selectedContact: ContactDetails, myPhoneNumber: String) : GenerateQrViewModel
-    }
+    private val normalizedPhone: String = PhoneNumberUtils.formatNumberToE164(
+        myPhoneNumber, "PH" )
 
-    // Suppressing unchecked cast warning
-    @Suppress("UNCHECKED_CAST")
-    companion object {
-
-        // putting this function inside
-        // companion object so that we can
-        // access it from outside i.e. from fragment/activity
-        fun providesFactory(
-            assistedFactory: GenerateQrViewModelFactory,
-            selectedContact: ContactDetails,
-            myPhoneNumber: String
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-
-                // using our ArticlesFeedViewModelFactory's create function
-                // to actually create our viewmodel instance
-                return assistedFactory.create(
-                    selectedContact, myPhoneNumber
-                ) as T
-            }
-        }
-    }
 
     init {
         generate(selectedContact, myPhoneNumber)
@@ -110,6 +88,57 @@ class GenerateQrViewModel @AssistedInject constructor(
         }
     }
 
+    fun shareQrCode(picture: Picture): Uri? {
+        val bitmap = createBitmapFromPicture(picture)
+        return saveBitmapToPng(bitmap)
+    }
+
+    fun saveQrCode(picture: Picture) {
+        if(
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && // Checking of storage permissions is only necessary for android 9 and below. Since we are only accessing app specific media, we don't need this permissions for android 10 and above.
+            appContext
+                .checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_DENIED
+        ) {
+            Toast.makeText(appContext, "Storage write permission denied",
+                Toast.LENGTH_SHORT).show()
+        }
+
+        val imagesFolder = File(Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DCIM
+        ), "QRSMS")
+
+        val imageBitmap = createBitmapFromPicture(picture)
+        // Generate Filename
+        val number = selectedContact.normalizedPhoneNumber.substringAfter("+")
+        val timestamp = System.currentTimeMillis()
+
+        val filename = "QRSMS-$number-$timestamp.png"
+        val handler = ImageHandler(appContext, imageBitmap, imagesFolder, filename)
+
+        try {
+            handler.saveImage()
+            Toast.makeText(appContext,
+                "QR Code saved successfully",
+                Toast.LENGTH_LONG).show()
+        } catch (e: IOException) {
+            Toast.makeText(appContext, e.message.toString(), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun createBitmapFromPicture(picture: Picture): Bitmap {
+        val bitmap = Bitmap.createBitmap(
+            picture.width,
+            picture.height,
+            Bitmap.Config.ARGB_8888
+        )
+
+        val canvas = android.graphics.Canvas(bitmap)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        canvas.drawPicture(picture)
+        return bitmap
+    }
+
     /**
      * Make a call to generateEcKeyPairInKeyStore upon the instantiation of this viewModel.
      * This will create a new Key Pair for the selected contact inside the keystore
@@ -128,7 +157,6 @@ class GenerateQrViewModel @AssistedInject constructor(
             if (publicKey != null) {
                 val keyInBase64 = Base64Utils.keyToBase64(publicKey)
                 _publicKeyString.value = keyInBase64
-                Log.d("Generate QR Screen", "Public Key: $keyInBase64")
             }
         }
     }
@@ -141,7 +169,7 @@ class GenerateQrViewModel @AssistedInject constructor(
      * Code taken from https://stackoverflow.com/questions/64443791/android-qr-generator-api
      * from user Siddharth Kamaria - answered on Oct 23, 2020
      */
-    fun generateQrCode(textToEncode: String): ImageBitmap {
+    fun generateQrCode(textToEncode: String): Bitmap {
         val size = 512 //pixels
         val hints = hashMapOf<EncodeHintType, Int>().also {
             it[EncodeHintType.MARGIN] = 1
@@ -154,20 +182,79 @@ class GenerateQrViewModel @AssistedInject constructor(
                     it.setPixel(x, y, if (bits[x, y]) Color.BLACK else Color.WHITE)
                 }
             }
-        }.asImageBitmap()
+        }
+    }
+
+    /**
+     * Saves the bitmap image as PNG to app's cache
+     *
+     * @param image bitmap image to be saved
+     * @return Uri of the saved file in the FileProvider
+     */
+    private fun saveBitmapToPng(image: Bitmap): Uri? {
+        val imagesFolder: File = File(appContext.cacheDir, "images")
+        var uri: Uri? = null
+
+
+        try {
+            imagesFolder.mkdirs()
+
+            val number = selectedContact.normalizedPhoneNumber.substringAfter("+")
+            val timestamp = System.currentTimeMillis()
+
+            val filename = "QRSMS-$number-$timestamp.png"
+            val file = File(imagesFolder, filename)
+
+            val stream: FileOutputStream = FileOutputStream(file)
+            image.compress(Bitmap.CompressFormat.PNG, 90, stream)
+
+            stream.flush()
+            stream.close()
+
+            uri = FileProvider.getUriForFile(
+                appContext,
+                "com.github.johnmelr.qrsms.fileprovider",
+                file
+            )
+
+            appContext.grantUriPermission(
+                appContext.packageName.toString(),
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+
+            Log.d("GenerateViewModel", "$uri")
+        } catch (e: IOException)  {
+           Log.e("GenerateQrViewModel", "IOException")
+        }
+
+        return uri
+    }
+
+    @AssistedFactory
+    interface GenerateQrViewModelFactory {
+        fun create(selectedContact: ContactDetails, myPhoneNumber: String) : GenerateQrViewModel
+    }
+
+    // Suppressing unchecked cast warning
+    @Suppress("UNCHECKED_CAST")
+    companion object {
+        // Factory to allow the ViewModel take extra class parameters that cannot be provided by
+        // the AppModule
+        fun providesFactory(
+            assistedFactory: GenerateQrViewModelFactory,
+            selectedContact: ContactDetails,
+            myPhoneNumber: String
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+
+                // using our ArticlesFeedViewModelFactory's create function
+                // to actually create our viewmodel instance
+                return assistedFactory.create(
+                    selectedContact, myPhoneNumber
+                ) as T
+            }
+        }
     }
 }
-//
-///**
-// * Factory Class to create new instance of GenerateQrViewModel with a parameter
-// */
-//class GenerateQrViewModelFactory(private val selectedContact: ContactDetails) :
-//        ViewModelProvider.NewInstanceFactory() {
-//
-//    @Suppress("UNCHECKED_CAST")
-//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-//        return GenerateQrViewModel(
-//            selectedContact = selectedContact
-//        ) as T
-//    }
-//}
