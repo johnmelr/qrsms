@@ -1,5 +1,8 @@
 package com.github.johnmelr.qrsms.ui
 
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Picture
 import android.telephony.PhoneNumberUtils
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -18,6 +21,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,6 +42,7 @@ import com.github.johnmelr.qrsms.ui.screens.GenerateQrScreen
 import com.github.johnmelr.qrsms.ui.screens.InboxScreen
 import com.github.johnmelr.qrsms.ui.screens.ScanQrScreen
 import com.github.johnmelr.qrsms.ui.screens.SelectContactScreen
+
 
 enum class QrsmsAppScreens(val title: String) {
     Inbox(title = "QRSMS"),
@@ -164,12 +170,42 @@ fun QrsmsApp(
                 val imageBitmap: ImageBitmap? =  if (publicKeyString.isEmpty()) null else
                     generateQrViewModel.generateQrCode(
                     "$normalizedNumber:$publicKeyString"
-                )
+                ).asImageBitmap()
 
+                val context = LocalContext.current
                 GenerateQrScreen(
                     selectedContact = selectedContact,
+                    defaultPhoneNumber = defaultPhoneNumber,
                     hasExistingKey = hasExistingKey,
                     generateKeyPair = { generateQrViewModel.generate(selectedContact , defaultPhoneNumber)},
+                    onShareQr = { picture: Picture ->
+                        val uri = generateQrViewModel.shareQrCode(picture)
+
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            type = "image/png"
+                        }
+                        val shareIntent = Intent.createChooser(sendIntent, null)
+
+                        val resInfoList = context.packageManager.queryIntentActivities(
+                            shareIntent,
+                            PackageManager.MATCH_DEFAULT_ONLY
+                        )
+                        for (resolveInfo in resInfoList) {
+                            val packageName = resolveInfo.activityInfo.packageName
+                            // Grant permission to Package to suppress Permission Denied errors.
+                            context.grantUriPermission(
+                                packageName,
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            )
+                        }
+
+                        context.startActivity(shareIntent)
+                    },
+                    onSaveQr =  { picture -> generateQrViewModel.saveQrCode(picture) },
                     imageBitmap = imageBitmap
                 )
             }
