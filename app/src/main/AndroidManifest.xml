@@ -18,6 +18,11 @@
     <uses-feature android:name="android.hardware.telephony.subscription" android:required="true" />
     <uses-feature android:name="android.hardware.telephony.messaging" android:required="true" />
 
+    <!-- Storage Permission -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!-- Camera Permissions and Feature -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
@@ -51,8 +56,20 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
+
+        <!-- FileProvider to allow saving bitmap as PNG to app's cache -->
+        <provider
+            android:authorities="com.github.johnmelr.qrsms.fileprovider"
+            android:name="com.github.johnmelr.qrsms.fileprovider.MyFileProvider"
+            android:grantUriPermissions="true"
+            android:exported="false" >
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"
+                />
+        </provider>
+
     </application>
 
 </manifest>
