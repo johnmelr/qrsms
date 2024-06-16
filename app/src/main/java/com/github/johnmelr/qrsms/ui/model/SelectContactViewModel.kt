@@ -95,5 +95,30 @@ class SelectContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Update value of selectedContact given the address
+     *
+     * @param address the normalized phone number of contact
+     */
+    fun setSelectedContactDetailsFromAddress(address: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            var contactDetails = contactsRepository.getContactDetailsOfAddress(address)
 
+            if (contactDetails == null) {
+                contactDetails = ContactDetails(
+                    id = "null",
+                    displayName = null,
+                    photoThumbUriString = null,
+                    phoneNumber = null,
+                    normalizedPhoneNumber = address
+                )
+            }
+
+            _selectContactState.update { currentState ->
+                currentState.copy(
+                    selectedContact = contactDetails
+                )
+            }
+        }
+    }
 }
