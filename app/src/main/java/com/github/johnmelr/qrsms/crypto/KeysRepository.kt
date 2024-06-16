@@ -9,13 +9,22 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import javax.inject.Inject
 
-class KeysRepository(
+/**
+ * Keys Entry From the room database
+ */
+class KeysRepository @Inject constructor(
     private val keysDao: KeysDao,
-    keyStore: KeyStore = KeyStore.getInstance("AndroidKeyStore")
-        .apply { load(null) }
+    keyStore: KeyStore,
 ): KeyManager(keyStore) {
+    suspend fun insertKeyPair(entry: KeyPairEntry) {
+        keysDao.insertKeyPair(entry)
+    }
 
+    override suspend fun getAllKeyPair(): List<String> {
+        return keysDao.getAllKeyPair()
+    }
     override suspend fun doesKeyPairExist(phoneNumber: String): Boolean {
         val entry: KeyPairEntry? = keysDao.getKeyPairOfAddress(phoneNumber)
 
@@ -41,7 +50,8 @@ class KeysRepository(
         return keyFactory.generatePublic(encodedKeySpec)
     }
 
-    suspend fun insertKeyPair(entry: KeyPairEntry) {
-        keysDao.insertKeyPair(entry)
+    override suspend fun deleteKeyPair(phoneNumber: String) {
+        keysDao.getKeyPairOfAddress(phoneNumber)
     }
+
 }

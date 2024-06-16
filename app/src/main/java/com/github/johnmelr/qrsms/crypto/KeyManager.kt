@@ -52,4 +52,16 @@ abstract class KeyManager(private val keyStore: KeyStore): KeyPairManager {
 
         return keyStore.containsAlias(alias)
     }
+
+    /**
+     * Delete secret key entry associated with the given contact
+     *
+     * @param phoneNumber the normalized address of the contact used as a keystore alias
+     */
+    fun deleteSecretKeyEntry(phoneNumber: String) {
+        val alias = SECRET_KEY_PREFIX +
+                PhoneNumberUtils.formatNumberToE164(phoneNumber, "PH")
+
+        keyStore.deleteEntry(alias)
+    }
 }
