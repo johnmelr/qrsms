@@ -11,6 +11,9 @@ import java.security.PublicKey
 
 @Dao
 interface KeysDao {
+    @Query("SELECT address FROM KeyPairEntry")
+    suspend fun getAllKeyPair(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertKeyPair(keypair: KeyPairEntry)
 
