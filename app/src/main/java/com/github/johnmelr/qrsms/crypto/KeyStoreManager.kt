@@ -11,15 +11,26 @@ private const val KEYSTORE_MANAGER_TAG = "KeyStoreManager"
 private const val NO_ENTRY_FOR_ALIAS = "No entry with the given alias exist in the Android Key Store"
 private const val EC_KEY_PREFIX = "eckey_"
 
+/**
+ * Key entries derived from the AndroidKeyStore
+ */
 class KeyStoreManager(
    private val keyStore: KeyStore = KeyStore
        .getInstance("AndroidKeyStore").apply { load(null) }
 ): KeyManager(keyStore) {
+    override suspend fun getAllKeyPair(): List<String> {
+        // return only KeyPair entries
+        val aliases = keyStore.aliases().toList()
+        val keyPairs = mutableListOf<String>()
 
-    /**
-     * Retrieves Public Key associated with the given phone number. This association
-     * is done when user generates a QR Code after selecting a contact.
-     */
+        aliases.forEach { alias ->
+            if (alias.contains("eckey_"))
+                keyPairs.add(alias.substringAfter("eckey_"))
+        }
+
+        return keyPairs.toList()
+    }
+
     override suspend fun getPublicKeyForNumber(phoneNumber: String): PublicKey? {
         val alias = EC_KEY_PREFIX +
                 PhoneNumberUtils.formatNumberToE164(phoneNumber, "PH")
@@ -34,11 +45,6 @@ class KeyStoreManager(
         return keyStore.getCertificate(alias).publicKey
     }
 
-    /**
-     * Retrieves Private Key associated with the given phone number. This association
-     * is done when user generates a QR Code after selecting a contact. This private key
-     * will be used to perform an ECDH key agreement.
-     */
     override suspend fun getPrivateKeyForNumber(phoneNumber: String): PrivateKey? {
         val alias = EC_KEY_PREFIX +
                 PhoneNumberUtils.formatNumberToE164(phoneNumber, "PH")
@@ -57,5 +63,12 @@ class KeyStoreManager(
         val alias = EC_KEY_PREFIX + phoneNumber
 
         return keyStore.containsAlias(alias)
+    }
+
+    override suspend fun deleteKeyPair(phoneNumber: String) {
+        val alias = EC_KEY_PREFIX +
+                PhoneNumberUtils.formatNumberToE164(phoneNumber, "PH")
+
+        keyStore.deleteEntry(alias)
     }
 }

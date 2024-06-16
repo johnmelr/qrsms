@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.crypto.BadPaddingException
 import javax.inject.Inject
 
 private const val TAG = "ConversationsViewModel"
@@ -240,7 +241,12 @@ class ConversationsViewModel @Inject constructor(
         cipherText: String,
     ): String {
         val cipher = QrsmsCipher(address)
-        return cipher.decrypt(cipherText.substring(4, cipherText.length - 4))
+        try {
+            return cipher.decrypt(cipherText.substring(4, cipherText.length - 4))
+        } catch (e: BadPaddingException) {
+            Log.e(TAG, "Using wrong key to decrypt message. ${e.stackTrace}")
+        }
+        return cipherText
     }
 
     fun resetConversationUiState() {

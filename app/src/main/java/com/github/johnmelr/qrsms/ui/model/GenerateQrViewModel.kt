@@ -88,6 +88,12 @@ class GenerateQrViewModel @AssistedInject constructor(
         }
     }
 
+    fun generateNewKeyPair(selectedContact: ContactDetails) {
+        viewModelScope.launch(Dispatchers.IO) {
+            generateKeyForContact(selectedContact)
+        }
+    }
+
     fun shareQrCode(picture: Picture): Uri? {
         val bitmap = createBitmapFromPicture(picture)
         return saveBitmapToPng(bitmap)
@@ -157,30 +163,6 @@ class GenerateQrViewModel @AssistedInject constructor(
             if (publicKey != null) {
                 val keyInBase64 = Base64Utils.keyToBase64(publicKey)
                 _publicKeyString.value = keyInBase64
-            }
-        }
-    }
-
-    /**
-     * Function to encode to given text inside a QR Code using the ZXing library
-     *
-     * @param textToEncode string of text that will be encoded inside the QR Code.
-     *
-     * Code taken from https://stackoverflow.com/questions/64443791/android-qr-generator-api
-     * from user Siddharth Kamaria - answered on Oct 23, 2020
-     */
-    fun generateQrCode(textToEncode: String): Bitmap {
-        val size = 512 //pixels
-        val hints = hashMapOf<EncodeHintType, Int>().also {
-            it[EncodeHintType.MARGIN] = 1
-        } // Make the QR code buffer border narrower
-        val bits = QRCodeWriter().encode(textToEncode, BarcodeFormat.QR_CODE, size, size, hints)
-
-        return Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565).also {
-            for (x in 0 until size) {
-                for (y in 0 until size) {
-                    it.setPixel(x, y, if (bits[x, y]) Color.BLACK else Color.WHITE)
-                }
             }
         }
     }
