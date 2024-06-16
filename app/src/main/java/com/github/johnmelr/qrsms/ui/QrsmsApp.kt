@@ -7,6 +7,9 @@ import android.telephony.PhoneNumberUtils
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,17 +43,21 @@ import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
 import com.github.johnmelr.qrsms.ui.screens.ConversationScreen
 import com.github.johnmelr.qrsms.ui.screens.GenerateQrScreen
 import com.github.johnmelr.qrsms.ui.screens.InboxScreen
+import com.github.johnmelr.qrsms.ui.screens.ManageKeysScreen
 import com.github.johnmelr.qrsms.ui.screens.ScanQrScreen
 import com.github.johnmelr.qrsms.ui.screens.SelectContactScreen
+import com.github.johnmelr.qrsms.utils.QrUtils.generateQrCode
 
 
 enum class QrsmsAppScreens(val title: String) {
     Inbox(title = "QRSMS"),
     Conversation(title = "Conversation"),
-    GenerateQR(title = "Generating QR Code"),
+    GenerateQR(title = "View QR Code"),
     GenerateForContact(title = "Generate QR Code"),
     NewConversation(title = "New Conversation"),
     ScanQR(title = "Scan QR Code"),
+    ManageKeys(title = "Manage Keys"),
+    ViewQr(title = "View QR Code"),
 }
 
 @Composable
@@ -83,6 +90,9 @@ fun QrsmsApp(
                 currentScreen = currentScreen,
                 canNavigateBack = navController.previousBackStackEntry != null,
                 navigateUp = { navController.navigateUp() },
+                navigateToManagement = { navController.navigate(
+                    QrsmsAppScreens.ManageKeys.name
+                )}
             )
         }
     ) { innerPadding ->
@@ -168,16 +178,14 @@ fun QrsmsApp(
                 val publicKeyString by generateQrViewModel.publicKeyString.collectAsStateWithLifecycle()
 
                 val imageBitmap: ImageBitmap? =  if (publicKeyString.isEmpty()) null else
-                    generateQrViewModel.generateQrCode(
-                    "$normalizedNumber:$publicKeyString"
-                ).asImageBitmap()
+                    generateQrCode( "$normalizedNumber:$publicKeyString" ).asImageBitmap()
 
                 val context = LocalContext.current
                 GenerateQrScreen(
                     selectedContact = selectedContact,
                     defaultPhoneNumber = defaultPhoneNumber,
                     hasExistingKey = hasExistingKey,
-                    generateKeyPair = { generateQrViewModel.generate(selectedContact , defaultPhoneNumber)},
+                    generateKeyPair = { generateQrViewModel.generateNewKeyPair(selectedContact) },
                     onShareQr = { picture: Picture ->
                         val uri = generateQrViewModel.shareQrCode(picture)
 
@@ -218,8 +226,30 @@ fun QrsmsApp(
                     defaultPhoneNumber = defaultPhoneNumber
                 )
             }
+            composable(route = QrsmsAppScreens.ManageKeys.name) {
+                ManageKeysScreen(
+                    onViewQrCode = {
+                        selectContactViewModel.setSelectedContactDetailsFromAddress(it)
+                        navController.navigate(QrsmsAppScreens.GenerateQR.name)
+                    }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun MenuBar(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit = {},
+    navigateToManagement: () -> Unit = {},
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest ) {
+        DropdownMenuItem(
+            text = { Text("Manage Keys")  },
+            onClick = navigateToManagement
+        )
+    } 
 }
 
 @Composable
@@ -229,6 +259,7 @@ fun QrsmsAppBar(
     modifier: Modifier = Modifier,
     canNavigateBack: Boolean,
     navigateUp: () -> Unit,
+    navigateToManagement: () -> Unit
 ) {
     TopAppBar(
         title = { Text( text =
@@ -247,6 +278,26 @@ fun QrsmsAppBar(
                         contentDescription = "Back Button"
                     )
                 }
+            }
+        },
+        actions = {
+            if (currentScreen.name != QrsmsAppScreens.Inbox.name) return@TopAppBar
+
+            val expanded = remember { mutableStateOf(false) }
+            IconButton(onClick = {
+                expanded.value = !expanded.value
+            }) {
+                Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Open Menu")
+                MenuBar(
+                    expanded = expanded.value,
+                    onDismissRequest = {
+                        expanded.value = !expanded.value
+                    },
+                    navigateToManagement = {
+                        navigateToManagement()
+                        expanded.value = !expanded.value
+                    }
+                )
             }
         }
     )
