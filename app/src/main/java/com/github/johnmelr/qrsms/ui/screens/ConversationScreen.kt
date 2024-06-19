@@ -240,14 +240,3 @@ fun MessageTypeOption (
         internalComposable()
     }
 }
-
-@Preview
-@Composable
-fun DialogPreview() {
-    SwitchMessageTypeDialog(
-        onCancel = {  /* TODO */ },
-        onSelectMessageType = { /* TODO */ }
-    )
-}
-
-
