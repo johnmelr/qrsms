@@ -25,6 +25,7 @@ import com.github.johnmelr.qrsms.data.messages.SmsSender
 import com.github.johnmelr.qrsms.ui.state.ConversationsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,13 +63,16 @@ class ConversationsViewModel @Inject constructor(
 
             if (uri == null || uri.toString().contains(smsRawUri)) return
 
-            val address = _conversationsUiState.value.selectedContactByAddress
-            val threadId = _conversationsUiState.value.selectedInboxByThreadId
+            viewModelScope.launch(Dispatchers.IO) {
+                val newMessage = smsRepository.getMessageByUri(uri)
+                val newAddress = newMessage?.address
 
-            if (threadId.isBlank())
-               getInboxOfAddress(address)
-            else
-               getInboxOfThreadId(threadId)
+                val address = _conversationsUiState.value.selectedContactByAddress
+
+                if (newAddress == address) {
+                    _messageList.value = listOf(newMessage) + _messageList.value.toList()
+                }
+            }
         }
     }
 
