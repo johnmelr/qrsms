@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,8 +29,6 @@ class ScanQrCodeViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val keyManager: KeyManager
 ): ViewModel() {
-    private val buildHash = if (BuildConfig.DEBUG) "hL6eyXZVMrW" else "8K21tZymYYh"
-
     private val _scanQrUiState = MutableStateFlow(ScanQrCodeUiState(false))
     var scanQrState: StateFlow<ScanQrCodeUiState> = _scanQrUiState.asStateFlow()
 
@@ -38,6 +37,7 @@ class ScanQrCodeViewModel @Inject constructor(
     }
 
     fun initiateExchange(barcodeRawValue: String, myPhoneNumber: String): String? {
+        setProcessing(true)
         val valueSplit = barcodeRawValue.split(":")
 
         /**
@@ -48,7 +48,8 @@ class ScanQrCodeViewModel @Inject constructor(
          * QRSMS
          */
         if (valueSplit.size != 2) {
-            throw Error("InvalidQrsmsCodeFormat")
+            setErrorMessage("Not a valid QRSMS Code!")
+            return null
         }
 
         val phoneNumber: String = valueSplit[0]
@@ -58,18 +59,23 @@ class ScanQrCodeViewModel @Inject constructor(
             phoneNumber,
             myPhoneNumber,
             publicKeyString,
-            keyManager)
+            keyManager
+        )
 
         try {
             viewModelScope.launch(Dispatchers.IO) {
                 ecdhKeyAgreement.performExchange()
-//                Toast.makeText(appContext, "Success", Toast.LENGTH_SHORT).show()
+                setSuccessState(true)
             }
             return phoneNumber
         } catch (e: Exception) {
             Log.e(TAG, e.stackTraceToString())
             val toast = Toast.makeText(appContext, e.message, Toast.LENGTH_SHORT)
             toast.show()
+            setSuccessState(false)
+            setErrorMessage(e.message ?: "Unknown Error.")
+        } finally {
+            setProcessing(false)
         }
 
         return null
@@ -88,6 +94,30 @@ class ScanQrCodeViewModel @Inject constructor(
         }
     }
 
+    private fun setProcessing(state: Boolean) {
+        _scanQrUiState.update { currentState ->
+            currentState.copy(
+                isProcessing = state
+            )
+        }
+    }
+
+    fun setSuccessState(result: Boolean) {
+        _scanQrUiState.update { currentState ->
+            currentState.copy(
+                isSuccess = result
+            )
+        }
+    }
+
+    private fun setErrorMessage(message: String) { 
+        _scanQrUiState.update { currentState -> 
+            currentState.copy(
+                errorMsg = message
+            )   
+        }
+    }
+
     fun permissionResult(isGranted: Boolean) {
         _scanQrUiState.update { currentState ->
             currentState.copy (
@@ -98,5 +128,8 @@ class ScanQrCodeViewModel @Inject constructor(
 }
 
 data class ScanQrCodeUiState(
-    val hasCameraPermission: Boolean
+    val hasCameraPermission: Boolean,
+    val isProcessing: Boolean = false,
+    val isSuccess: Boolean = false,
+    val errorMsg: String = "",
 )
