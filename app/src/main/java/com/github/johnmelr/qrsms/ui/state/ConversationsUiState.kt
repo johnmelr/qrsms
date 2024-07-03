@@ -11,4 +11,6 @@ data class ConversationsUiState(
     val hasExistingKey: Boolean = false,
 
     val contact: ContactDetails? = null,
+    val loading: Boolean = true,
+    val error: Throwable? = null
 )

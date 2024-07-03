@@ -5,7 +5,6 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.Telephony.Sms
 import android.provider.Telephony.Sms.Conversations
-import android.provider.Telephony.Sms.Inbox
 import android.util.Log
 import com.github.johnmelr.qrsms.crypto.Base64Utils
 import com.github.johnmelr.qrsms.data.contacts.ContactDetails
@@ -13,9 +12,7 @@ import com.github.johnmelr.qrsms.data.contacts.ContactsRepository
 import com.github.johnmelr.qrsms.data.messages.QrsmsProjection.smsColumnsProjection
 import com.github.johnmelr.qrsms.data.utils.Flags
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 private const val TAG = "SmsRepository"
 
@@ -108,8 +105,8 @@ class SmsRepository(
             val threadIdCursor: Cursor = contentResolver.query(
                 Sms.CONTENT_URI,
                 smsColumnsProjection,
-                //"instr(${Sms.ADDRESS}, ${addressOfConversation.substringAfter("+63")}) > 0",
-                "${Sms.ADDRESS} LIKE ${addressOfConversation.substringAfter("+63")}",
+                "instr(${Sms.ADDRESS}, ${addressOfConversation.substringAfter("+63")}) > 0",
+                //"${Sms.ADDRESS} LIKE ${addressOfConversation.substringAfter("+63")}",
                 null,
                 "${Sms.DATE} DESC LIMIT 1"
             ) ?: return@withContext
@@ -138,8 +135,6 @@ class SmsRepository(
     suspend fun getConversations(
         inboxList: MutableList<QrsmsMessage>
     ) {
-        Log.v("SmsRepository", "Retrieving Conversations.")
-
         withContext(dispatcherIO) {
             val conversationsCursor: Cursor = contentResolver.query(
                 Conversations.CONTENT_URI,
