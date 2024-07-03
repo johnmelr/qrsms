@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -43,6 +44,7 @@ import androidx.compose.ui.zIndex
 import com.github.johnmelr.qrsms.ui.QrsmsAppScreens
 import com.github.johnmelr.qrsms.R
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
+import com.github.johnmelr.qrsms.ui.model.InboxUiState
 import com.github.johnmelr.qrsms.utils.DateUtils.parseDateFromMilliToDate
 
 @Composable
@@ -54,6 +56,7 @@ fun InboxScreen(
     onSelectNewMessage: (String) -> Unit = {},
     onSelectMessage: (String, String) -> Unit = { _: String, _: String -> },
     messageList: List<QrsmsMessage>,
+    inboxUiState: InboxUiState
 ) {
     Scaffold(
         bottomBar = {
@@ -89,36 +92,47 @@ fun InboxScreen(
         },
         modifier = modifier
     ) { innerPadding ->
+        Column {
+            val listState = rememberLazyListState()
 
-        val listState = rememberLazyListState()
-
-        LaunchedEffect(listState) {
-            snapshotFlow { listState.firstVisibleItemIndex }
-                .collect {
-                    if (it <= 1)
-                        listState.animateScrollToItem(0)
-                }
+            LaunchedEffect(listState) {
+                snapshotFlow { listState.firstVisibleItemIndex }
+                    .collect {
+                        if (it <= 1)
+                            listState.animateScrollToItem(0)
+                    }
             }
 
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding),
-            state = listState
-        ) {
-            items(
-                count = messageList.size,
-                key = {
-                    messageList[it].id
-                },
-                itemContent = { index ->
-                    val message = remember { messageList[index] }
+            LazyColumn(
+                modifier = Modifier.padding(innerPadding),
+                state = listState
+            ) {
+                items(
+                    count = messageList.size,
+                    key = {
+                        messageList[it].id
+                    },
+                    itemContent = { index ->
+                        val message = remember { messageList[index] }
 
-                    MessageCard(
-                        message = message,
-                        onSelectMessage = onSelectMessage,
-                        onNavigateToConversations = onNavigateToConversations
-                    )
+                        MessageCard(
+                            message = message,
+                            onSelectMessage = onSelectMessage,
+                            onNavigateToConversations = onNavigateToConversations
+                        )
+                    }
+                )
+            }
+            if (inboxUiState.loading) {
+                Column (
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    CircularProgressIndicator()
                 }
-            )
+            }
         }
     }
 }

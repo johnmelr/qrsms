@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.lang.Exception
 import javax.crypto.BadPaddingException
 import javax.inject.Inject
 
@@ -149,10 +150,21 @@ class ConversationsViewModel @Inject constructor(
 
         viewModelScope.launch {
             val smsMessages: MutableList<QrsmsMessage> = mutableListOf()
-            smsRepository.getInboxOfThreadId(
-                smsMessages,
-                selectedThreadId
-            )
+
+            try {
+                smsRepository.getInboxOfThreadId(
+                    smsMessages,
+                    selectedThreadId
+                )
+            } catch (e: Exception) {
+                _conversationsUiState.update {
+                    it.copy(error = e)
+                }
+            } finally {
+                _conversationsUiState.update {
+                    it.copy(loading = false)
+                }
+            }
 
             _messageList.value = smsMessages.toList()
         }
@@ -168,10 +180,20 @@ class ConversationsViewModel @Inject constructor(
 
         viewModelScope.launch {
             val smsMessage: MutableList<QrsmsMessage> = mutableListOf()
-            smsRepository.getInboxOfAddress(
-                smsMessage,
-                address
-            )
+
+            try {
+                smsRepository.getInboxOfAddress(
+                    smsMessage,
+                    address
+                )
+            } catch (e: Exception) {
+                _conversationsUiState.update {
+                    it.copy(error = e)
+                }
+            }
+            _conversationsUiState.update {
+                it.copy(loading = false)
+            }
 
             _messageList.value = smsMessage.toList()
         }

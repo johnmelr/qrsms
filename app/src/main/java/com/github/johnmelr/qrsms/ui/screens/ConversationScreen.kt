@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -73,6 +74,7 @@ fun ConversationScreen(
         val contact = conversationsUiState.contact
         val canSendEncryptedMessage = conversationsUiState.hasExistingKey
         conversationsViewModel.setAddress(addressOfConversation)
+        val loading = conversationsUiState.loading
 
         if (contact != null) {
             run { onConversationLoad(contact.displayName ?: contact.normalizedPhoneNumber) }
@@ -122,6 +124,17 @@ fun ConversationScreen(
                     MessageBubble(message = message, messageDecrypt = messageDecrypt)
                 }
             )
+        }
+
+        if (loading) {
+            Column(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         MessageInput(

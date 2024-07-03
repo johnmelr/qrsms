@@ -37,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.github.johnmelr.qrsms.data.messages.QrsmsMessage
 import com.github.johnmelr.qrsms.ui.model.GenerateQrViewModel
+import com.github.johnmelr.qrsms.ui.model.InboxUiState
 import com.github.johnmelr.qrsms.ui.model.InboxViewModel
 import com.github.johnmelr.qrsms.ui.model.QrsmsAppViewModel
 import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
@@ -109,8 +110,8 @@ fun QrsmsApp(
                 .padding(innerPadding)
         ) {
             composable(route = QrsmsAppScreens.Inbox.name) {
-                val inboxUiState by inboxViewModel.qrsmsInboxUiState.collectAsStateWithLifecycle()
                 val messageList: List<QrsmsMessage> = inboxViewModel.messageList.collectAsStateWithLifecycle().value
+                val inboxUiState = inboxViewModel.inboxUiState.collectAsStateWithLifecycle().value
 
                 InboxScreen(
                     messageList = messageList,
@@ -124,7 +125,8 @@ fun QrsmsApp(
                     },
                     onSelectNewMessage = {
                         navController.navigate(it)
-                    }
+                    },
+                    inboxUiState = inboxUiState
                 )
             }
             composable(route = QrsmsAppScreens.Conversation.name) {

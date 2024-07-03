@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,6 +47,9 @@ class InboxViewModel @Inject constructor(
     private var _qrsmsInboxUiState = MutableStateFlow(QrsmsInboxUiState())
     val qrsmsInboxUiState: StateFlow<QrsmsInboxUiState> = _qrsmsInboxUiState.asStateFlow()
 
+    private var _inboxUiState = MutableStateFlow(InboxUiState(true, null))
+    val inboxUiState: StateFlow<InboxUiState> = _inboxUiState.asStateFlow()
+
     var selectedThread by mutableStateOf("")
         private set
     var selectedAddress by mutableStateOf("")
@@ -70,7 +74,6 @@ class InboxViewModel @Inject constructor(
                     it.threadId != newMessage.threadId
                 }.toList()
             }
-//             getInboxFromSmsProvider()
         }
     }
 
@@ -106,11 +109,21 @@ class InboxViewModel @Inject constructor(
         viewModelScope.launch {
             val inboxList: MutableList<QrsmsMessage> = mutableListOf()
 
-            smsRepository.getConversations(
-                inboxList,
-            )
-
+            try {
+                smsRepository.getConversations(
+                    inboxList,
+                )
+            } catch (e: Exception) {
+                _inboxUiState.update { currentState ->
+                    currentState.copy(
+                        error = e
+                    )
+                }
+            }
             _messageList.value = inboxList
+            _inboxUiState.update {
+                it.copy(loading = false)
+            }
         }
     }
 
@@ -119,3 +132,8 @@ class InboxViewModel @Inject constructor(
         selectedAddress = address
     }
 }
+
+data class InboxUiState (
+    val loading: Boolean = true,
+    val error: Throwable?,
+)
