@@ -1,24 +1,18 @@
 package com.github.johnmelr.qrsms.crypto
 
-import android.os.Build
 import android.security.keystore.KeyProperties
 import at.favre.lib.hkdf.HKDF
 import java.io.ByteArrayOutputStream
 import java.security.InvalidKeyException
 import java.security.KeyFactory
-import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.interfaces.ECPrivateKey
+import java.security.UnrecoverableKeyException
 import java.security.interfaces.ECPublicKey
-import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.util.Arrays
-import java.util.Base64
 import javax.crypto.KeyAgreement
-import javax.crypto.SecretKey
-import android.util.Base64 as androidBase64
 
 const val KEY_ALGORITHM_ECDH = "ECDH"
 
@@ -33,14 +27,14 @@ class EcdhKeyAgreement(
 
     suspend fun performExchange() {
         val otherPublicKeyAsByteArray: ByteArray = Base64Utils.base64ToByteArray(publicKeyString)
-        val myPrivateKey: PrivateKey = keyManager.getPrivateKeyForNumber(phoneNumber) ?: throw InvalidKeyException("No key exist for $phoneNumber")
+        val myPrivateKey: PrivateKey = keyManager.getPrivateKeyForNumber(phoneNumber) ?: throw UnrecoverableKeyException("No key exist for $phoneNumber")
 
         val sharedSecret = generateSharedSecret(
             publicKeyString,
             myPrivateKey
         )
 
-        val myPublicKey = keyManager.getPublicKeyForNumber(phoneNumber) ?: throw InvalidKeyException("No key exist for $phoneNumber")
+        val myPublicKey = keyManager.getPublicKeyForNumber(phoneNumber) ?: throw UnrecoverableKeyException("No key exist for $phoneNumber")
 
         val secretKey:ByteArray = deriveSecretKey(
             sharedSecret,
