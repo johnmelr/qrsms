@@ -40,6 +40,7 @@ import com.github.johnmelr.qrsms.ui.model.GenerateQrViewModel
 import com.github.johnmelr.qrsms.ui.model.InboxUiState
 import com.github.johnmelr.qrsms.ui.model.InboxViewModel
 import com.github.johnmelr.qrsms.ui.model.QrsmsAppViewModel
+import com.github.johnmelr.qrsms.ui.model.ScanQrCodeViewModel
 import com.github.johnmelr.qrsms.ui.model.SelectContactViewModel
 import com.github.johnmelr.qrsms.ui.screens.ConversationScreen
 import com.github.johnmelr.qrsms.ui.screens.GenerateQrScreen
@@ -221,11 +222,10 @@ fun QrsmsApp(
             }
             composable(route = QrsmsAppScreens.ScanQR.name) {
                 ScanQrScreen(
-                    navController = navController,
                     onScanSuccess = {
                         navController.popBackStack(QrsmsAppScreens.Inbox.name, false)
                     },
-                    defaultPhoneNumber = defaultPhoneNumber
+                    defaultPhoneNumber = defaultPhoneNumber,
                 )
             }
             composable(route = QrsmsAppScreens.ManageKeys.name) {
