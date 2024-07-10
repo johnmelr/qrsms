@@ -271,7 +271,10 @@ class ConversationsViewModel @Inject constructor(
             return cipher.decrypt(cipherText.substring(4, cipherText.length - 4))
         } catch (e: BadPaddingException) {
             Log.e(TAG, "Using wrong key to decrypt message. ${e.stackTrace}")
+        } catch (e: NullPointerException){
+            Log.e(TAG, "No key exist. ${e.stackTrace}")
         }
+
         return cipherText
     }
 
